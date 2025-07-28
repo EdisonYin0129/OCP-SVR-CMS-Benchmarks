@@ -1,12 +1,19 @@
 #!/bin/bash
 
+# Change base directory to specify running in which storage device
+BASE_DIR="/tmp"
+
 # Define parameters for the benchmark runs
-VECTOR_SIZES=(384 768 1024 2048 3072 4096)
-NUM_VECTORS=(1000000 5000000 10000000 25000000 50000000 100000000)
+VECTOR_SIZES=(384 768 1024)
+NUM_VECTORS=(500000 1000000 5000000)
+MEMORY=30
+STORAGE=30
+STORAGE_DIR="${BASE_DIR}/qdrant_benchmark/storage"
+mkdir -p $STORAGE_DIR
 
 # Define output directories
-LOG_DIR="/var/tmp/qdrant_benchmark/logs"
-CSV_DIR="/var/tmp/qdrant_benchmark/results"
+LOG_DIR="${BASE_DIR}/qdrant_benchmark/logs"
+CSV_DIR="${BASE_DIR}/qdrant_benchmark/results"
 mkdir -p $LOG_DIR $CSV_DIR
 
 # CSV output files
@@ -15,9 +22,9 @@ LATENCY_CSV="${CSV_DIR}/latency_results.csv"
 MEMORY_CSV="${CSV_DIR}/memory_results.csv"
 
 # Initialize CSV headers
-echo "Vector Size,1M,5M,10M,25M,50M,100M" > $QPS_CSV
-echo "Vector Size,1M,5M,10M,25M,50M,100M" > $LATENCY_CSV
-echo "Vector Size,1M,5M,10M,25M,50M,100M" > $MEMORY_CSV
+echo "Vector Size,0.5M,1M,5M" > $QPS_CSV
+echo "Vector Size,0.5M,1M,5M" > $LATENCY_CSV
+echo "Vector Size,0.5M,1M,5M" > $MEMORY_CSV
 
 # Loop through each vector size and number of vectors
 for vector_size in "${VECTOR_SIZES[@]}"; do
@@ -34,12 +41,12 @@ for vector_size in "${VECTOR_SIZES[@]}"; do
 	echo "[START_TIME] Starting benchmark for vector size: $vector_size and vectors: $num_vectors"
 
         # Run the benchmark and save output to the log file
-        python3 ./qdrant_benchmark.py --vector-size $vector_size --initial-vectors $num_vectors > $LOG_FILE 2>&1
+        python3 ./qdrant_benchmark.py --vector-size $vector_size --numvectors $num_vectors --memory $MEMORY --dbpath $STORAGE_DIR --storage $STORAGE --on-disk  > $LOG_FILE 2>&1
         
         # Extract the relevant information from the log file
         QPS=$(grep -oP 'Average query time: \K[\d\.]+' $LOG_FILE)
         LATENCY=$(grep -oP 'Final average query time: \K[\d\.]+' $LOG_FILE)
-        MEMORY_USAGE=$(grep -oP '"Memory": "\K[\d\.]+GiB' $LOG_FILE | tail -1)
+        MEMORY_USAGE=$(grep -oP '"Memory": "\K[\d\.]+(?:MiB|GiB)' $LOG_FILE | tail -1)
         
         # Add extracted data to the corresponding rows
         QPS_ROW="$QPS_ROW,$QPS"
